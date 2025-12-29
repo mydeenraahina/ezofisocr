@@ -2,3 +2,5 @@ torch
 transformers>=4.38.0
 Pillow
 requests
+fastapi
+uvicorn
