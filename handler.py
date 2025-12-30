@@ -1,22 +1,28 @@
 from transformers import AutoProcessor, AutoModelForVision2Seq
 import torch
-from fastapi import FastAPI, Request
-import uvicorn
 
 MODEL_NAME = "Qwen/Qwen3-VL-8B-Instruct"
 
-# Load processor and model (only once at startup)
+# Load the model and processor ONLY ONCE when the container starts
 processor = AutoProcessor.from_pretrained(MODEL_NAME)
 model = AutoModelForVision2Seq.from_pretrained(MODEL_NAME)
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = model.to(device)
 
-app = FastAPI()
-
-@app.post("/infer")
-async def infer(request: Request):
-    data = await request.json()
-    user_input = data.get("input", {})
+def handler(event):
+    """
+    Expects input:
+    {
+      "input": {
+        "text_prompt": "your question here"
+      }
+    }
+    Returns:
+    {
+      "output": "model_reply"
+    }
+    """
+    user_input = event.get("input", {})
     prompt = user_input.get("text_prompt", None)
 
     if not prompt:
@@ -42,5 +48,11 @@ async def infer(request: Request):
     generated_text = processor.decode(outputs[0][inputs["input_ids"].shape[-1]:])
     return {"output": generated_text}
 
+# For local test (optional)
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    test_event = {
+        "input": {
+            "text_prompt": "What animal is on the candy?"
+        }
+    }
+    print(handler(test_event))
