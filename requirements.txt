@@ -3,3 +3,5 @@ torchvision
 transformers>=4.38.0
 Pillow
 requests
+runpod
+accelerate
