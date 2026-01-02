@@ -1,23 +1,39 @@
 import runpod
 from transformers import AutoProcessor, AutoModelForVision2Seq
 import torch
+import os
 
-MODEL_NAME = "Qwen/Qwen3-VL-8B-Instruct"
+MODEL_NAME = os.environ.get("MODEL_NAME", "Qwen/Qwen3-VL-8B-Instruct")
+HF_TOKEN = os.environ.get("HF_TOKEN") or None
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 
-processor = AutoProcessor.from_pretrained(MODEL_NAME)
+processor = AutoProcessor.from_pretrained(
+    MODEL_NAME,
+    token=HF_TOKEN,
+    trust_remote_code=True,
+)
 model = AutoModelForVision2Seq.from_pretrained(
     MODEL_NAME,
-    torch_dtype=torch.float16,
-    device_map="auto"
+    torch_dtype=dtype,
+    device_map="auto",
+    token=HF_TOKEN,
+    trust_remote_code=True,
 )
 
 def handler(event):
-    prompt = event["input"].get("text_prompt")
+    payload = None
+    if isinstance(event, dict):
+        payload = event.get("input")
+        if payload is None:
+            payload = event
+    if not isinstance(payload, dict):
+        return {"error": "Invalid input payload"}
+
+    prompt = payload.get("text_prompt") or payload.get("text")
 
     if not prompt:
-        return {"error": "No prompt provided"}
+        return {"error": "No prompt provided. Provide `text_prompt` (or `text`)."}
 
     messages = [
         {
